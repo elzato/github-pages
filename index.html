@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>YOLOv8 Realtime Object Detection</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+    }
+    video, canvas {
+      max-width: 90%;
+      border: 2px solid #ccc;
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    #result {
+      font-size: 20px;
+      font-weight: bold;
+      color: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>YOLOv8 Object Detection</h1>
+  <video id="video" autoplay playsinline></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <br />
+  <button id="detectBtn">Detect Object</button>
+  <p id="result">Result will appear here...</p>
+
+  <script>
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const detectBtn = document.getElementById("detectBtn");
+    const result = document.getElementById("result");
+
+    const MODEL_URL = "https://detect.roboflow.com/coco-yolov8/1?api_key=rf-public-api-key";
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (error) {
+        alert("Camera access denied.");
+      }
+    }
+
+    function captureFrame() {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      return canvas.toDataURL("image/jpeg");
+    }
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      speechSynthesis.speak(utterance);
+    }
+
+    async function detectObject() {
+      result.textContent = "Detecting...";
+      const imageData = captureFrame();
+
+      const res = await fetch(MODEL_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ image: imageData })
+      });
+
+      const data = await res.json();
+
+      if (data && data.predictions && data.predictions.length > 0) {
+        const obj = data.predictions[0].class;
+        result.textContent = `Detected: ${obj}`;
+        speak(obj);
+      } else {
+        result.textContent = "No object detected.";
+      }
+    }
+
+    detectBtn.addEventListener("click", detectObject);
+    startCamera();
+  </script>
+</body>
+</html>
